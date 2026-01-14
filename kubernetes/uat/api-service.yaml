@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: b2b-uat-security
+  namespace: b2b-uat
+  annotations:
+    # cloud.google.com/load-balancer-type: "Internal"  
+    cloud.google.com/neg: '{"ingress": true}'        # Enable NEG for Ingress integration
+    # networking.gke.io/load-balancer-type: "Internal" # Ensure GKE's internal LB integration
+spec:
+  type: ClusterIP
+  #loadBalancerIP: 192.168.86.21                    
+  ports:
+    - name: http
+      port: 80                                       # External port (matches Ingress)
+      targetPort: 8080                               # Ensure this matches the app's listening port
+      protocol: TCP                                  # Use TCP protocol for HTTP traffic
+  selector:
+    app: b2b-uat-security                              # Match the deployment's label for pod selection
+  sessionAffinity: None                              # Disable session affinity unless required
+  # externalTrafficPolicy: Cluster                     
