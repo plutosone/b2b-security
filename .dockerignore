@@ -1,12 +1,7 @@
-# Ignore everything by default
-*
-
-# Allow Maven build inputs
-!pom.xml
-!src/**
-!.mvn/**
-!mvnw
-!mvnw.cmd
-
-# Optional: allow target for caching
-!target/**
+target/
+.git/
+.gitignore
+.mvn/
+*.md
+.idea/
+.vscode/
