@@ -1,5 +1,12 @@
+# Ignore everything by default
 *
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*
+
+# Allow Maven build inputs
+!pom.xml
+!src/**
+!.mvn/**
+!mvnw
+!mvnw.cmd
+
+# Optional: allow target for caching
+!target/**
