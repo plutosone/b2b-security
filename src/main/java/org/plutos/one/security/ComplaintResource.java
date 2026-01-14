@@ -1,5 +1,6 @@
 package org.plutos.one.security;
 
+import org.plutos.one.model.EncryptedResponse;
 import org.plutos.one.util.DigitalSignerDecryptor;
 import org.plutos.one.util.DigitalSignerEncryptor;
 
