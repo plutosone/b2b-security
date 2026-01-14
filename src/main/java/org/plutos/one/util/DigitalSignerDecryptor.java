@@ -33,28 +33,66 @@ public class DigitalSignerDecryptor {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    public Uni<String> decrypt(EncryptedResponse encryptedResponse) {
-        return Uni.createFrom().item(() -> {
-            try {
-                String decryptedJson = decryptPayload(encryptedResponse.getPayload(),
-                        certificateLoader.getPlutosPrivateKeyObj());
-                // log.debug("decryptedJson ===>\n" + decryptedJson);
-                log.debug("Decrypted JSON: \n{}", decryptedJson);
+    // public Uni<String> decrypt(EncryptedResponse encryptedResponse) {
+    //     return Uni.createFrom().item(() -> {
+    //         try {
+    //             String decryptedJson = decryptPayload(encryptedResponse.getPayload(),
+    //                     certificateLoader.getPlutosPrivateKeyObj());
+    //             // log.debug("decryptedJson ===>\n" + decryptedJson);
+    //             log.debug("Decrypted JSON: \n{}", decryptedJson);
 
-                boolean verified = verifySignature(encryptedResponse.getSignature(),
-                        certificateLoader.getIbmbPublicKeyObj(),
-                        decryptedJson);
+    //             boolean verified = verifySignature(encryptedResponse.getSignature(),
+    //                     certificateLoader.getIbmbPublicKeyObj(),
+    //                     decryptedJson);
 
-                if (!verified) {
-                    throw new SecurityException("Signature verification failed");
-                }
+    //             if (!verified) {
+    //                 throw new SecurityException("Signature verification failed");
+    //             }
 
-                return decryptedJson;
-            } catch (Exception e) {
-                throw new RuntimeException("Decryption failed", e);
+    //             return decryptedJson;
+    //         } catch (Exception e) {
+    //             throw new RuntimeException("Decryption failed", e);
+    //         }
+    //     }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    // }
+
+
+public Uni<String> decrypt(EncryptedResponse encryptedResponse) {
+    return Uni.createFrom().item(() -> {
+        try {
+
+            if (encryptedResponse.getSignatures() == null ||
+                encryptedResponse.getSignatures().isEmpty()) {
+                throw new IllegalArgumentException("No signature found in request");
             }
-        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
-    }
+
+            Signature signatureObj = encryptedResponse.getSignatures().get(0);
+
+            String decryptedJson = decryptPayload(
+                encryptedResponse.getPayload(),
+                certificateLoader.getPlutosPrivateKeyObj()
+            );
+
+            log.debug("Decrypted JSON:\n{}", decryptedJson);
+
+            boolean verified = verifySignature(
+                signatureObj,
+                certificateLoader.getIbmbPublicKeyObj(),
+                decryptedJson
+            );
+
+            if (!verified) {
+                throw new SecurityException("Signature verification failed");
+            }
+
+            return decryptedJson;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Decryption failed", e);
+        }
+    }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+}
+
 
     public static String decryptPayload(String cipherTextBase64, PrivateKey privateKey) throws Exception {
         Cipher cipher = Cipher.getInstance("ECIESwithSHA512/NONE/NoPadding");
@@ -63,35 +101,87 @@ public class DigitalSignerDecryptor {
         return new String(cipher.doFinal(Base64.getDecoder().decode(cipherTextBase64.getBytes())));
     }
 
-    public boolean verifySignature(Signature signatureObj, PublicKey publicKey, String json)
-            throws Exception {
+    // public boolean verifySignature(Signature signatureObj, PublicKey publicKey, String json)
+    //         throws Exception {
 
-        String protectedHeader = new String(Base64.getDecoder().decode(signatureObj.getProtectedSignature()),
-                StandardCharsets.UTF_8);
+    //     String protectedHeader = new String(Base64.getDecoder().decode(signatureObj.getProtectedSignature()),
+    //             StandardCharsets.UTF_8);
 
-        long created = extractLong(protectedHeader, "created");
-        long expires = extractLong(protectedHeader, "expires");
+    //     long created = extractLong(protectedHeader, "created");
+    //     long expires = extractLong(protectedHeader, "expires");
 
-        long now = System.currentTimeMillis();
-        if (now < created || now > expires) {
-            log.error("Message expired or not yet valid.");
-            return false;
-        }
+    //     long now = System.currentTimeMillis();
+    //     if (now < created || now > expires) {
+    //         log.error("Message expired or not yet valid.");
+    //         return false;
+    //     }
 
-        byte[] signature = Base64.getDecoder().decode(signatureObj.getSignature().getBytes());
-        Blake2bDigest blakeHash = new Blake2bDigest(512);
-        blakeHash.update(json.getBytes(), 0, json.getBytes().length);
-        byte[] hashByte = new byte[blakeHash.getDigestSize()];
-        blakeHash.doFinal(hashByte, 0);
-        String concatenated = "(created):" + created + "\n"
-                + "(expires):" + expires + "\n" + "digest:BLAKE2b-512="
-                + Base64.getEncoder().encodeToString(hashByte);
+    //     byte[] signature = Base64.getDecoder().decode(signatureObj.getSignature().getBytes());
+    //     Blake2bDigest blakeHash = new Blake2bDigest(512);
+    //     blakeHash.update(json.getBytes(), 0, json.getBytes().length);
+    //     byte[] hashByte = new byte[blakeHash.getDigestSize()];
+    //     blakeHash.doFinal(hashByte, 0);
+    //     String concatenated = "(created):" + created + "\n"
+    //             + "(expires):" + expires + "\n" + "digest:BLAKE2b-512="
+    //             + Base64.getEncoder().encodeToString(hashByte);
 
-        java.security.Signature verifier = java.security.Signature.getInstance("SHA512withECDSA");
-        verifier.initVerify(publicKey);
-        verifier.update(concatenated.getBytes());
-        return verifier.verify(signature);
+    //     java.security.Signature verifier = java.security.Signature.getInstance("SHA512withECDSA");
+    //     verifier.initVerify(publicKey);
+    //     verifier.update(concatenated.getBytes());
+    //     return verifier.verify(signature);
+    // }
+
+public boolean verifySignature(Signature signatureObj, PublicKey publicKey, String json)
+        throws Exception {
+
+    // 🔐 Defensive checks (THIS IS WHERE IT GOES)
+    if (signatureObj == null) {
+        throw new IllegalArgumentException("Signature object is null");
     }
+    if (signatureObj.getProtectedSignature() == null) {
+        throw new IllegalArgumentException("Protected signature is missing");
+    }
+    if (signatureObj.getSignature() == null) {
+        throw new IllegalArgumentException("Signature value is missing");
+    }
+
+    String protectedHeader = new String(
+            Base64.getDecoder().decode(signatureObj.getProtectedSignature()),
+            StandardCharsets.UTF_8
+    );
+
+    long created = extractLong(protectedHeader, "created");
+    long expires = extractLong(protectedHeader, "expires");
+
+    long now = System.currentTimeMillis();
+    if (now < created || now > expires) {
+        log.error("Message expired or not yet valid.");
+        return false;
+    }
+
+    byte[] signatureBytes = Base64.getDecoder()
+            .decode(signatureObj.getSignature());
+
+    Blake2bDigest blakeHash = new Blake2bDigest(512);
+    blakeHash.update(json.getBytes(StandardCharsets.UTF_8), 0, json.getBytes().length);
+    byte[] hashByte = new byte[blakeHash.getDigestSize()];
+    blakeHash.doFinal(hashByte, 0);
+
+    String concatenated =
+            "(created):" + created + "\n" +
+            "(expires):" + expires + "\n" +
+            "digest:BLAKE2b-512=" + Base64.getEncoder().encodeToString(hashByte);
+
+    java.security.Signature verifier =
+            java.security.Signature.getInstance("SHA512withECDSA");
+
+    verifier.initVerify(publicKey);
+    verifier.update(concatenated.getBytes(StandardCharsets.UTF_8));
+
+    return verifier.verify(signatureBytes);
+}
+
+
 
     private long extractLong(String input, String key) {
         String match = input.replaceAll(".*" + key + "=\\\"(\\d+)\\\".*", "$1");

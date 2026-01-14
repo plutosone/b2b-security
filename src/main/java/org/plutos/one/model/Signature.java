@@ -14,7 +14,8 @@ import lombok.ToString;
 @AllArgsConstructor
 public class Signature {
 
-    @JsonProperty("protected")
+    @JsonProperty("protectedInfo")
     private String protectedSignature;
+
     private String signature;
 }

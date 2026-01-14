@@ -30,6 +30,7 @@ public class ComplaintResource {
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> encryptTest(String payload) throws Exception {
+        System.out.println("Payload to encrypt: \n" + payload);
         return Uni.createFrom().item(payload)
                 .flatMap(json -> digitalSignerEncryptor.encrypt(json))
                 .onItem().transform(encryptedJson -> Response.ok()
@@ -42,6 +43,7 @@ public class ComplaintResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> encryptTest(EncryptedResponse encryptedResponse) throws Exception {
+        System.out.println("Payload to decrypt: \n" + encryptedResponse);;
         return Uni.createFrom().item(encryptedResponse)
                 .flatMap(json -> digitalSignerDecryptor.decrypt(encryptedResponse))
                 .onItem().transform(encryptedJson -> Response.ok()
