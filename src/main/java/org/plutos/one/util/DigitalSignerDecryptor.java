@@ -134,7 +134,7 @@ public Uni<String> decrypt(EncryptedResponse encryptedResponse) {
 public boolean verifySignature(Signature signatureObj, PublicKey publicKey, String json)
         throws Exception {
 
-    // 🔐 Defensive checks (THIS IS WHERE IT GOES)
+    // 🔐 Defensive checks
     if (signatureObj == null) {
         throw new IllegalArgumentException("Signature object is null");
     }
